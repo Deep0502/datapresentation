@@ -63,16 +63,27 @@ def compute_amp_limits(rows, expected_current=None, tolerance_pct=10):
 
 
 def compute_accuracy(rows, lo, hi):
+    """Percentage of amp readings within [lo, hi]."""
     if not rows:
         return 0
     within = sum(1 for r in rows if lo <= r['amp'] <= hi)
     return round(within / len(rows) * 100, 1)
 
 
+def compute_within_range(rows, lo, hi):
+    """
+    COUNT of readings where amp >= lo AND amp <= hi
+    i.e. reading is within BOTH lower and upper limit
+    """
+    return sum(1 for r in rows if lo <= r['amp'] <= hi)
+
+
 def compute_out_of_range(rows, lo, hi):
-    if not rows:
-        return 0
-    return sum(1 for r in rows if r['amp'] < lo * 0.9 or r['amp'] > hi * 1.1)
+    """
+    Count readings OUTSIDE [lo, hi]
+    i.e. amp < lo OR amp > hi
+    """
+    return sum(1 for r in rows if r['amp'] < lo or r['amp'] > hi)
 
 
 # ── parser ────────────────────────────────────────────────────────────
@@ -88,7 +99,6 @@ def parse_workbook(file):
         rows_iter = list(ws.iter_rows(values_only=True))
         if not rows_iter:
             continue
-
         headers = [to_str(h) for h in rows_iter[0]]
 
         if 'Glucose' not in headers:
@@ -138,19 +148,25 @@ def clean_rows(rows, apply_time_filter, amp_lo=0, amp_hi=9999):
     """
     Rules:
       1. Remove Sat (dow=5) and Sun (dow=6)
-      2. If apply_time_filter: keep hour 10-19 only
+      2. If apply_time_filter: keep ONLY hour 10 to 18 inclusive
+         FIX: 10am to 7pm means last allowed hour = 18 (up to 18:59)
+         hour 19 = 7:00pm onwards → EXCLUDED
       3. For every Refilled/battery row:
-           - KEEP the refill row itself always
+           - Check if refill row itself is stable (amp within [amp_lo, amp_hi])
+               * Stable  → KEEP refill row
+               * Unstable → REMOVE refill row too
            - For each of the 3 rows BEFORE and 3 rows AFTER:
-               * If amp is OUTSIDE [amp_lo, amp_hi] → DROP  (unstable)
-               * If amp is WITHIN  [amp_lo, amp_hi] → KEEP  (already stable)
+               * If amp is OUTSIDE [amp_lo, amp_hi] → DROP (unstable)
+               * If amp is WITHIN  [amp_lo, amp_hi] → KEEP (already stable)
     """
     # Step 1 — remove weekends
     rows = [r for r in rows if r['dow'] not in (5, 6)]
 
-    # Step 2 — optional time filter
+    # Step 2 — time filter
+    # FIX: 10am to 7pm = hour 10,11,12,13,14,15,16,17,18 only
+    # 7pm = 19:00 → excluded (client does NOT want 7pm entries)
     if apply_time_filter:
-        rows = [r for r in rows if 10 <= r['hour'] <= 19]
+        rows = [r for r in rows if 10 <= r['hour'] <= 18]
 
     # Step 3 — smart refill removal
     refill_markers = []
@@ -160,34 +176,48 @@ def clean_rows(rows, apply_time_filter, amp_lo=0, amp_hi=9999):
         st = r['status']
         if is_refill(st) or is_battery(st):
 
-            # Save as chart marker (refill row always kept)
-            refill_markers.append({
-                'date':      r['date'],
-                'time':      r['time'],
-                'timestamp': r['date'] + ' ' + r['time'],
-                'amp':       r['amp'],
-                'glucose':   r['glucose'],
-                'label':     st,
-                'sheet':     r['sheet'],
-            })
+            # FIX 3: Check if refill row itself is stable
+            refill_amp = r['amp']
+            refill_stable = (amp_lo <= refill_amp <= amp_hi)
+
+            if refill_stable:
+                # Refill row is within limits → KEEP it as marker
+                refill_markers.append({
+                    'date':      r['date'],
+                    'time':      r['time'],
+                    'timestamp': r['date'] + ' ' + r['time'],
+                    'amp':       refill_amp,
+                    'glucose':   r['glucose'],
+                    'label':     st,
+                    'sheet':     r['sheet'],
+                    'stable':    True,
+                })
+                # Refill row itself is NOT dropped (stable)
+            else:
+                # Refill row is outside limits → REMOVE it too
+                refill_markers.append({
+                    'date':      r['date'],
+                    'time':      r['time'],
+                    'timestamp': r['date'] + ' ' + r['time'],
+                    'amp':       refill_amp,
+                    'glucose':   r['glucose'],
+                    'label':     st,
+                    'sheet':     r['sheet'],
+                    'stable':    False,
+                })
+                drop_positions.add(i)  # drop the unstable refill row itself
 
             # Check 3 rows BEFORE the refill
             for j in range(max(0, i - 3), i):
-                row_amp = rows[j]['amp']
-                if not (amp_lo <= row_amp <= amp_hi):
-                    # Unstable — outside limits → DROP
-                    drop_positions.add(j)
-                # else: stable within limits → KEEP
+                if not (amp_lo <= rows[j]['amp'] <= amp_hi):
+                    drop_positions.add(j)   # unstable → DROP
+                # else stable → KEEP
 
             # Check 3 rows AFTER the refill
             for j in range(i + 1, min(len(rows), i + 4)):
-                row_amp = rows[j]['amp']
-                if not (amp_lo <= row_amp <= amp_hi):
-                    # Unstable — outside limits → DROP
-                    drop_positions.add(j)
-                # else: stable within limits → KEEP
-
-            # Refill row itself at position i → NEVER dropped
+                if not (amp_lo <= rows[j]['amp'] <= amp_hi):
+                    drop_positions.add(j)   # unstable → DROP
+                # else stable → KEEP
 
     cleaned = [r for i, r in enumerate(rows) if i not in drop_positions]
     return cleaned, refill_markers
@@ -210,16 +240,13 @@ def upload_file(request):
     try:
         raw_rows, sheets, summary = parse_workbook(f)
 
-        # Compute fallback limits from raw data for initial cleaning at upload time
-        # User can override with Expected Current later via the settings panel
+        # Fallback limits from raw data for initial cleaning
         lo_raw, hi_raw = compute_amp_limits(raw_rows)
 
-        # V1 — clean with time filter, smart drop using fallback limits
         c1, m1 = clean_rows(raw_rows, apply_time_filter=True,
                              amp_lo=lo_raw, amp_hi=hi_raw)
         lo1, hi1 = compute_amp_limits(c1)
 
-        # V2 — clean full day, smart drop using fallback limits
         c2, m2 = clean_rows(raw_rows, apply_time_filter=False,
                              amp_lo=lo_raw, amp_hi=hi_raw)
         lo2, hi2 = compute_amp_limits(c2)
@@ -276,14 +303,34 @@ def filter_data(request):
         if sheet != 'all':
             markers_out = [m for m in markers_in if m.get('sheet', '') == sheet]
 
+        # Compute limits first — needed for smart refill drop
         ec = float(expected_current) if expected_current else None
         lo, hi = compute_amp_limits(result, expected_current=ec,
                                     tolerance_pct=float(tolerance_pct))
 
-        accuracy        = compute_accuracy(result, lo, hi)
-        out_of_range    = compute_out_of_range(result, lo, hi)
-        min_range_count = sum(1 for r in result if r['amp'] >= lo)
-        max_range_count = sum(1 for r in result if r['amp'] <= hi)
+        # Re-apply smart refill drop with current limits
+        # Unstable refill rows (amp outside [lo,hi]) are removed from result
+        # but their markers are already in markers_out for chart display
+        drop_pos = set()
+        for i, r in enumerate(result):
+            st = r.get('status', '')
+            if is_refill(st) or is_battery(st):
+                # Remove unstable refill row itself
+                if not (lo <= r['amp'] <= hi):
+                    drop_pos.add(i)
+                # Remove unstable rows in ±3 window
+                for j in range(max(0, i - 3), i):
+                    if not (lo <= result[j]['amp'] <= hi):
+                        drop_pos.add(j)
+                for j in range(i + 1, min(len(result), i + 4)):
+                    if not (lo <= result[j]['amp'] <= hi):
+                        drop_pos.add(j)
+
+        result = [r for i, r in enumerate(result) if i not in drop_pos]
+
+        accuracy     = compute_accuracy(result, lo, hi)
+        within_range = compute_within_range(result, lo, hi)
+        out_of_range = compute_out_of_range(result, lo, hi)
 
         return JsonResponse({
             'rows':          result,
@@ -292,9 +339,8 @@ def filter_data(request):
             'ampLower':      lo,
             'ampUpper':      hi,
             'accuracy':      accuracy,
+            'withinRange':   within_range,
             'outOfRange':    out_of_range,
-            'minRangeCount': min_range_count,
-            'maxRangeCount': max_range_count,
         })
     except Exception as e:
         import traceback
@@ -375,8 +421,8 @@ def export_excel(request):
             ['Min Range (Lower Limit)',           amp_lo],
             ['Max Range (Upper Limit)',           amp_hi],
             ['Total Readings',                   len(rows)],
-            ['Out of Range Readings (Spikes)',    out_of_range],
-            ['Accuracy (within ±10% tolerance)', f'{accuracy}%'],
+            ['Out of Range Readings',             out_of_range],
+            ['Accuracy (within tolerance)',       f'{accuracy}%'],
             ['Sheets Included',                  ', '.join(groups.keys())],
         ]
         for i, row in enumerate(summary_rows, start=1):

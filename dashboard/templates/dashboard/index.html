@@ -144,7 +144,7 @@
 
       <!-- upload -->
       <div>
-        <div class="sec-title">Data Source file</div>
+        <div class="sec-title">Data Source</div>
         <label style="cursor:pointer;display:block">
           <div class="upload-btn">+ Upload .xlsx file</div>
           <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none"/>
@@ -160,7 +160,7 @@
           <button class="ds-btn"        id="btnV2" onclick="switchDS('v2')">Full day</button>
           <button class="ds-btn"        id="btnRaw" onclick="switchDS('raw')">Raw</button>
         </div>
-        <div style="font-size:10px;color:var(--text3)" id="dsNote">Clean · no weekends · refill±3 removed</div>
+        <div style="font-size:10px;color:var(--text3)" id="dsNote">Clean · no weekends · refill±4 removed</div>
       </div>
 
       <hr class="sdiv"/>
@@ -330,38 +330,35 @@
             <div class="mcard" style="border-top-color:var(--amber)">
               <div class="mlbl"><span>Refill events</span><span>🏷️</span></div>
               <div class="mval" style="color:var(--amber)" id="mRefill">0</div>
-              <div class="msub">Marked on charts ◆</div>
+              <div class="msub">
+                <span style="color:var(--teal)">✅ <span id="mStableRefills">0</span> stable</span>
+                &nbsp;|&nbsp;
+                <span style="color:var(--red)">❌ <span id="mUnstableRefills">0</span> removed</span>
+              </div>
             </div>
           </div>
         </div>
-        <!-- metric cards row 2 — range counts matching screenshot -->
+        <!-- metric cards row 2 -->
         <div class="row g-2 mb-2">
-          <div class="col-6 col-xl-3">
-            <div class="mcard" style="border-top-color:var(--blue)">
-              <div class="mlbl"><span>Within Min Range</span><span>⬇</span></div>
-              <div class="mval" style="color:var(--blue)" id="mMinRangeCount">—</div>
-              <div class="msub">Amp readings ≥ <span id="mMinRangeVal">—</span></div>
-            </div>
-          </div>
-          <div class="col-6 col-xl-3">
-            <div class="mcard" style="border-top-color:var(--red)">
-              <div class="mlbl"><span>Within Max Range</span><span>⬆</span></div>
-              <div class="mval" style="color:var(--red)" id="mMaxRangeCount">—</div>
-              <div class="msub">Amp readings ≤ <span id="mMaxRangeVal">—</span></div>
-            </div>
-          </div>
-          <div class="col-6 col-xl-3">
+          <div class="col-6 col-xl-4">
             <div class="mcard" style="border-top-color:var(--teal)">
-              <div class="mlbl"><span>Accuracy</span><span>✅</span></div>
-              <div class="mval" style="color:var(--teal)" id="mAccuracy">—</div>
+              <div class="mlbl"><span>Within Range</span><span>✅</span></div>
+              <div class="mval" style="color:var(--teal)" id="mWithinRange">—</div>
+              <div class="msub">amp ≥ <span id="mLoVal">—</span> &amp; amp ≤ <span id="mHiVal">—</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-4">
+            <div class="mcard" style="border-top-color:var(--blue)">
+              <div class="mlbl"><span>Accuracy</span><span>🎯</span></div>
+              <div class="mval" style="color:var(--blue)" id="mAccuracy">—</div>
               <div class="msub">Within ±<span id="mTolPct">10</span>% tolerance</div>
             </div>
           </div>
-          <div class="col-6 col-xl-3">
+          <div class="col-6 col-xl-4">
             <div class="mcard" style="border-top-color:var(--red)">
               <div class="mlbl"><span>Out of range</span><span>⚠️</span></div>
               <div class="mval" style="color:var(--red)" id="mOutOfRange">—</div>
-              <div class="msub">Spikes beyond 90–110%</div>
+              <div class="msub">amp &lt; <span id="mLoVal2">—</span> or amp &gt; <span id="mHiVal2">—</span></div>
             </div>
           </div>
         </div>
@@ -380,7 +377,8 @@
           </div>
           <div class="leg-row">
             <span class="leg-item"><span class="leg-line" style="background:#00d4a0"></span>Glucose (mg/dL)</span>
-            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled event</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled (stable)</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#ff5c5c"></span>Refilled (unstable)</span>
           </div>
           <div class="hscroll" id="wrapGluc">
             <div class="chart-inner" id="innerGluc"><canvas id="cGluc" height="120"></canvas></div>
@@ -406,7 +404,10 @@
             <span class="leg-item"><span class="leg-line" style="background:#00d4a0"></span>Amp</span>
             <span class="leg-item" style="color:#ff5c5c"><span class="leg-dash" style="border-top:2px dashed #ff5c5c"></span>&nbsp;Upper limit</span>
             <span class="leg-item" style="color:#f59e0b"><span class="leg-dash" style="border-top:2px dashed #f59e0b"></span>&nbsp;Lower limit</span>
-            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled event</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled (stable)</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#ff5c5c"></span>Refilled (unstable)</span>
+            <span class="leg-item"><span style="display:inline-block;width:14px;height:10px;background:rgba(77,159,255,0.3);border:1px solid #4d9fff;border-radius:2px"></span>&nbsp;13–16 Apr 11am–5pm</span>
+            <span class="leg-item"><span style="display:inline-block;width:14px;height:10px;background:rgba(245,166,35,0.3);border:1px solid #f5a623;border-radius:2px"></span>&nbsp;16 Apr 5pm – 17 Apr 5pm</span>
           </div>
           <div class="hscroll" id="wrapAmp">
             <div class="chart-inner" id="innerAmp"><canvas id="cAmp" height="400"></canvas></div>
@@ -475,6 +476,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script>
 // ── constants ──────────────────────────────────────────────────────────
 const SC={'In Air':'#4d9fff','PBS':'#a78bfa','50 mgdl Placed':'#00d4a0',
@@ -488,8 +490,8 @@ const TT={backgroundColor:'#1a1e28',borderColor:'rgba(255,255,255,.1)',borderWid
   titleColor:'#e8eaf0',bodyColor:'#8a90a4',padding:10};
 const PAGE=15, PX=20;
 const DS_NOTES={
-  v1:'✅ Clean · Sat/Sun removed · 10am–7pm · Refill ±3 removed',
-  v2:'✅ Clean · Sat/Sun removed · Full day · Refill ±3 removed',
+  v1:'✅ Clean · Sat/Sun removed · 10am–7pm · Refill ±4 removed',
+  v2:'✅ Clean · Sat/Sun removed · Full day · Refill ±4 removed',
   raw:'⚠️ Raw data — no cleaning applied'
 };
 
@@ -644,12 +646,19 @@ async function applyFilters(){
       tolerancePct:    limitTolPct,
     })});
   const data=await res.json();
-  filtRows    =data.rows;
-  filtMarkers =data.refillMarkers||dsMarkers;
+  filtRows    = data.rows;
+  // Always use dsMarkers for chart rendering — contains ALL refill markers
+  // with stable/unstable flag set correctly at upload time
+  filtMarkers = dsMarkers;
   curLo = limitExpCurrent ? data.ampLower : (dsLo||data.ampLower);
   curHi = limitExpCurrent ? data.ampUpper : (dsHi||data.ampUpper);
+
+  // Count stable/unstable from dsMarkers using current limits
+  const stableCount   = dsMarkers.filter(m=> curLo<=m.amp && m.amp<=curHi).length;
+  const unstableCount = dsMarkers.filter(m=>!(curLo<=m.amp && m.amp<=curHi)).length;
+
   pg=0;
-  updateMetrics(data.accuracy, data.outOfRange, data.minRangeCount, data.maxRangeCount);
+  updateMetrics(data.accuracy, data.outOfRange, data.withinRange, stableCount, unstableCount);
   renderCharts();
   renderTable();
   document.getElementById('cntBadge').textContent=`● ${dsRows.length} total · ${filtRows.length} shown`;
@@ -666,20 +675,27 @@ async function applyFilters(){
 }
 
 // ── metrics ────────────────────────────────────────────────────────────
-function updateMetrics(accuracy,outOfRange,minRangeCount,maxRangeCount){
+function updateMetrics(accuracy, outOfRange, withinRange, stableRefills, unstableRefills){
   const n=filtRows.length;
   document.getElementById('mTotal').textContent=n.toLocaleString();
-  document.getElementById('mRefill').textContent=dsMarkers.length;
+  // refill card — total = stable + unstable, show breakdown
+  const totalRefills = (stableRefills||0) + (unstableRefills||0);
+  document.getElementById('mRefill').textContent          = totalRefills;
+  document.getElementById('mStableRefills').textContent   = stableRefills!=null   ? stableRefills   : '—';
+  document.getElementById('mUnstableRefills').textContent = unstableRefills!=null ? unstableRefills : '—';
   document.getElementById('loLabel').textContent='Lower: '+curLo;
   document.getElementById('hiLabel').textContent='Upper: '+curHi;
   document.getElementById('mTolPct').textContent=limitTolPct;
-  // update min/max range val labels
-  document.getElementById('mMinRangeVal').textContent=curLo;
-  document.getElementById('mMaxRangeVal').textContent=curHi;
-  document.getElementById('mAccuracy').textContent   = accuracy!=null ? accuracy+'%' : '—';
-  document.getElementById('mOutOfRange').textContent = outOfRange!=null ? outOfRange : '—';
+  // within range card — amp >= lo AND amp <= hi
+  document.getElementById('mLoVal').textContent=curLo;
+  document.getElementById('mHiVal').textContent=curHi;
+  document.getElementById('mLoVal2').textContent=curLo;
+  document.getElementById('mHiVal2').textContent=curHi;
+  document.getElementById('mWithinRange').textContent = withinRange!=null ? withinRange.toLocaleString() : '—';
+  document.getElementById('mAccuracy').textContent    = accuracy!=null    ? accuracy+'%'                : '—';
+  document.getElementById('mOutOfRange').textContent  = outOfRange!=null  ? outOfRange.toLocaleString() : '—';
   if(!n){
-    ['mGluc','mAmp','mMinRangeCount','mMaxRangeCount'].forEach(id=>document.getElementById(id).textContent='—');
+    ['mGluc','mAmp'].forEach(id=>document.getElementById(id).textContent='—');
     document.getElementById('mAmpLim').textContent='Lower — | Upper —';
     return;
   }
@@ -689,11 +705,6 @@ function updateMetrics(accuracy,outOfRange,minRangeCount,maxRangeCount){
   document.getElementById('mGlucRange').textContent=`Range: ${Math.min(...gs)}–${Math.max(...gs)} mg/dL`;
   document.getElementById('mAmp').textContent=avg(as);
   document.getElementById('mAmpLim').textContent=`Lower ${curLo} | Upper ${curHi}`;
-  // count readings within lower and upper limit — use server value if provided
-  const withinLo = minRangeCount!=null ? minRangeCount : as.filter(a=>a>=curLo).length;
-  const withinHi = maxRangeCount!=null ? maxRangeCount : as.filter(a=>a<=curHi).length;
-  document.getElementById('mMinRangeCount').textContent=withinLo.toLocaleString();
-  document.getElementById('mMaxRangeCount').textContent=withinHi.toLocaleString();
 }
 
 // ── charts ─────────────────────────────────────────────────────────────
@@ -704,13 +715,32 @@ function destroyCharts(){
   if(chScatter){chScatter.destroy();chScatter=null;}
 }
 function mkLabels(rows){return rows.map(r=>`${r.date.slice(5)} ${r.time.slice(0,5)}`);}
-function mkRefillOverlay(rows,key){
-  const arr=new Array(rows.length).fill(null);
-  filtMarkers.forEach(m=>{
-    const mKey=m.date+' '+m.time.slice(0,8);
-    rows.forEach((r,i)=>{if(r.date+' '+r.time.slice(0,8)===mKey) arr[i]=rows[i][key];});
+// Build null overlay — only for STABLE refills (amp within current limits)
+function mkRefillOverlay(rows, key){
+  const arr = new Array(rows.length).fill(null);
+  filtMarkers.forEach(m => {
+    if(!(curLo <= m.amp && m.amp <= curHi)) return; // unstable — skip
+    const mKey = m.date + ' ' + m.time.slice(0, 8);
+    rows.forEach((r, i) => {
+      if (r.date + ' ' + r.time.slice(0, 8) === mKey) arr[i] = rows[i][key];
+    });
   });
   return arr;
+}
+
+// Build scatter dataset for UNSTABLE refills (removed from data but still shown on chart)
+// Uses actual marker amp/glucose values as fixed x/y points
+function mkUnstableRefillDataset(key){
+  // filtMarkers already has all markers; unstable ones won't match any filtRow
+  const stableKeys = new Set(filtRows.map(r => r.date + ' ' + r.time.slice(0, 8)));
+  const unstable   = filtMarkers.filter(m => !stableKeys.has(m.date + ' ' + m.time.slice(0, 8)));
+  return unstable.map((m, i) => ({
+    x: i,        // will be overridden in scatter mode — we use it differently below
+    amp:     m.amp,
+    glucose: m.glucose,
+    label:   m.label,
+    ts:      m.date + ' ' + m.time,
+  }));
 }
 function setScrollWidth(innerId,canvasId,n){
   const w=Math.max(n*PX,700);
@@ -727,10 +757,32 @@ function renderCharts(){
   const rows=filtRows; if(!rows.length) return;
   const labels=mkLabels(rows);
   const glucData=rows.map(r=>r.glucose), ampData=rows.map(r=>r.amp);
-  const rGluc=mkRefillOverlay(rows,'glucose'), rAmp=mkRefillOverlay(rows,'amp');
+  // stable refill overlay — matched to rows that exist in filtRows
+  const rGluc=mkRefillOverlay(rows,'glucose');
+  const rAmp =mkRefillOverlay(rows,'amp');
   const n=rows.length;
   setScrollWidth('innerGluc','cGluc',n);
   setScrollWidth('innerAmp','cAmp',n);
+
+  // unstable refills: removed from data but still shown as RED ◆ on chart
+  // detect by checking amp against current limits
+  const unstableGluc = new Array(n).fill(null);
+  const unstableAmp  = new Array(n).fill(null);
+  filtMarkers.forEach(m=>{
+    const isUnstable = !(curLo <= m.amp && m.amp <= curHi);
+    if(!isUnstable) return; // stable — already handled in rGluc/rAmp overlay
+    // find nearest row by timestamp to place the marker visually
+    const mts = +new Date(m.date+' '+m.time);
+    let bi=-1, bd=Infinity;
+    rows.forEach((r,i)=>{
+      const d=Math.abs(+new Date(r.date+' '+r.time)-mts);
+      if(d<bd){bd=d;bi=i;}
+    });
+    if(bi>=0){
+      unstableGluc[bi] = m.glucose;
+      unstableAmp[bi]  = m.amp;
+    }
+  });
 
   // GLUCOSE
   const glucDS=glucType==='bar'
@@ -740,14 +792,21 @@ function renderCharts(){
       pointBackgroundColor:'#00d4a0',pointBorderColor:'#00d4a0',borderWidth:2,order:2};
   chGluc=new Chart(document.getElementById('cGluc').getContext('2d'),{
     type:glucType==='bar'?'bar':'line',
-    data:{labels,datasets:[glucDS,
+    data:{labels,datasets:[
+      glucDS,
+      // stable refill markers — orange ◆
       {label:'Refilled',data:rGluc,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
-       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1}]},
+       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1},
+      // unstable refill markers — red ◆ (removed from data but shown on chart)
+      {label:'Refilled (unstable)',data:unstableGluc,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
+       backgroundColor:'#ff5c5c',borderColor:'#ff5c5c',order:1},
+    ]},
     options:{responsive:false,maintainAspectRatio:false,animation:{duration:200},
       plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
         title:ctx=>{const row=filtRows[ctx[0].dataIndex];return row?`${row.date}  ${row.time.slice(0,8)}`:'';}  ,
         label:ctx=>{
-          if(ctx.dataset.label==='Refilled') return [`◆ Refilled: ${ctx.parsed.y} mg/dL`];
+          if(ctx.dataset.label==='Refilled') return [`◆ Refilled (stable): ${ctx.parsed.y} mg/dL`];
+          if(ctx.dataset.label==='Refilled (unstable)') return [`◆ Refilled (unstable — removed): ${ctx.parsed.y} mg/dL`];
           const row=filtRows[ctx.dataIndex];
           const lines=[`🩸 Glucose: ${ctx.parsed.y} mg/dL`];
           if(row&&row.status&&row.status.trim()) lines.push(`📋 Status: ${row.status}`);
@@ -760,10 +819,52 @@ function renderCharts(){
     }
   });
 
-  // AMP
-  const loArr=new Array(n).fill(curLo), hiArr=new Array(n).fill(curHi);
-  // fix canvas height for amp chart
+  // ── Background colour annotations on Amp chart ──────────────────────
+  // Range 1: 13 Apr – 16 Apr, 11am – 5pm  → blue
+  // Range 2: 16 Apr 5pm+                  → orange
+  const ampAnnotations = {};
+  let r1Start=null, r1End=null, r2Start=null, r2End=null;
+
+  rows.forEach((r,i)=>{
+    const d = r.date;           // 'YYYY-MM-DD'
+    const h = parseInt((r.time||'00').slice(0,2));
+    const is1316 = d>='2026-04-13' && d<='2026-04-16';
+    const in11to17 = h>=11 && h<=17;          // 11am to 5pm inclusive
+    const is16after17 = (d==='2026-04-16' && h>=17) || (d==='2026-04-17' && h<=17);
+
+    if(is1316 && in11to17){
+      if(r1Start===null) r1Start=i;
+      r1End=i;
+    }
+    if(is16after17){
+      if(r2Start===null) r2Start=i;
+      r2End=i;
+    }
+  });
+
+  if(r1Start!==null){
+    ampAnnotations.range1={
+      type:'box', xMin:r1Start, xMax:r1End,
+      backgroundColor:'rgba(77,159,255,0.10)',
+      borderColor:'rgba(77,159,255,0.4)',
+      borderWidth:1,
+      label:{content:'13–16 Apr 11am–5pm',display:true,
+             color:'#4d9fff',font:{size:9},position:{x:'start',y:'start'}},
+    };
+  }
+  if(r2Start!==null){
+    ampAnnotations.range2={
+      type:'box', xMin:r2Start, xMax:r2End,
+      backgroundColor:'rgba(245,166,35,0.12)',
+      borderColor:'rgba(245,166,35,0.4)',
+      borderWidth:1,
+      label:{content:'16 Apr 5pm – 17 Apr 5pm',display:true,
+             color:'#f5a623',font:{size:9},position:{x:'start',y:'start'}},
+    };
+  }
   document.getElementById('cAmp').height=400;
+  const loArr=new Array(n).fill(curLo), hiArr=new Array(n).fill(curHi);
+  if(chAmp){chAmp.destroy();chAmp=null;}
   chAmp=new Chart(document.getElementById('cAmp').getContext('2d'),{
     type:'line',
     data:{labels,datasets:[
@@ -772,15 +873,18 @@ function renderCharts(){
        pointBackgroundColor:'#00d4a0',pointBorderColor:'#00d4a0',borderWidth:2.5,order:3},
       {label:'Upper limit',data:hiArr,borderColor:'#ff5c5c',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:2},
       {label:'Lower limit',data:loArr,borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:2},
+      // stable refill markers — orange ◆
       {label:'Refilled',data:rAmp,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
-       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1}]},
+       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1},
+      // unstable refill markers — red ◆ (removed from data but still shown)
+      {label:'Refilled (unstable)',data:unstableAmp,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
+       backgroundColor:'#ff5c5c',borderColor:'#ff5c5c',order:1},
+    ]},
     options:{responsive:false,maintainAspectRatio:false,animation:{duration:200},
       plugins:{
         legend:{display:false},
-        zoom:{
-          zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},
-          pan:{enabled:true,mode:'x'},
-        },
+        ...(Object.keys(ampAnnotations).length ? {annotation:{annotations:ampAnnotations}} : {}),
+        zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}},
         tooltip:{...TT,callbacks:{
         title:ctx=>{const row=filtRows[ctx[0].dataIndex];return row?`${row.date}  ${row.time.slice(0,8)}`:'';}  ,
         label:ctx=>{
