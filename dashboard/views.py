@@ -49,18 +49,11 @@ def is_battery(status):
 # ── amp limits ────────────────────────────────────────────────────────
 
 def compute_amp_limits(rows, expected_current=None, tolerance_pct=10):
-    """
-    If expected_current is provided:
-        Lower = expected_current * (1 - tolerance_pct/100)
-        Upper = expected_current * (1 + tolerance_pct/100)
-    Else fallback to Mean ± 2*StdDev from data.
-    """
     if expected_current and expected_current > 0:
-        t = tolerance_pct / 100.0
+        t  = tolerance_pct / 100.0
         lo = round(expected_current * (1 - t), 2)
         hi = round(expected_current * (1 + t), 2)
         return lo, hi
-    # fallback
     amps = [r['amp'] for r in rows if r['amp'] > 0]
     if len(amps) < 2:
         return 0, 0
@@ -70,7 +63,6 @@ def compute_amp_limits(rows, expected_current=None, tolerance_pct=10):
 
 
 def compute_accuracy(rows, lo, hi):
-    """Percentage of amp readings within [lo, hi]."""
     if not rows:
         return 0
     within = sum(1 for r in rows if lo <= r['amp'] <= hi)
@@ -78,7 +70,6 @@ def compute_accuracy(rows, lo, hi):
 
 
 def compute_out_of_range(rows, lo, hi):
-    """Count of amp readings outside [lo*0.9, hi*1.1] — spikes."""
     if not rows:
         return 0
     return sum(1 for r in rows if r['amp'] < lo * 0.9 or r['amp'] > hi * 1.1)
@@ -87,7 +78,7 @@ def compute_out_of_range(rows, lo, hi):
 # ── parser ────────────────────────────────────────────────────────────
 
 def parse_workbook(file):
-    wb = openpyxl.load_workbook(file, data_only=True)
+    wb       = openpyxl.load_workbook(file, data_only=True)
     all_rows = []
     sheets   = []
     summary  = {}
@@ -143,17 +134,33 @@ def parse_workbook(file):
 
 # ── cleaning ──────────────────────────────────────────────────────────
 
-def clean_rows(rows, apply_time_filter):
+def clean_rows(rows, apply_time_filter, amp_lo=0, amp_hi=9999):
+    """
+    Rules:
+      1. Remove Sat (dow=5) and Sun (dow=6)
+      2. If apply_time_filter: keep hour 10-19 only
+      3. For every Refilled/battery row:
+           - KEEP the refill row itself always
+           - For each of the 3 rows BEFORE and 3 rows AFTER:
+               * If amp is OUTSIDE [amp_lo, amp_hi] → DROP  (unstable)
+               * If amp is WITHIN  [amp_lo, amp_hi] → KEEP  (already stable)
+    """
+    # Step 1 — remove weekends
     rows = [r for r in rows if r['dow'] not in (5, 6)]
+
+    # Step 2 — optional time filter
     if apply_time_filter:
         rows = [r for r in rows if 10 <= r['hour'] <= 19]
 
+    # Step 3 — smart refill removal
     refill_markers = []
     drop_positions = set()
 
     for i, r in enumerate(rows):
         st = r['status']
         if is_refill(st) or is_battery(st):
+
+            # Save as chart marker (refill row always kept)
             refill_markers.append({
                 'date':      r['date'],
                 'time':      r['time'],
@@ -163,10 +170,24 @@ def clean_rows(rows, apply_time_filter):
                 'label':     st,
                 'sheet':     r['sheet'],
             })
+
+            # Check 3 rows BEFORE the refill
             for j in range(max(0, i - 3), i):
-                drop_positions.add(j)
+                row_amp = rows[j]['amp']
+                if not (amp_lo <= row_amp <= amp_hi):
+                    # Unstable — outside limits → DROP
+                    drop_positions.add(j)
+                # else: stable within limits → KEEP
+
+            # Check 3 rows AFTER the refill
             for j in range(i + 1, min(len(rows), i + 4)):
-                drop_positions.add(j)
+                row_amp = rows[j]['amp']
+                if not (amp_lo <= row_amp <= amp_hi):
+                    # Unstable — outside limits → DROP
+                    drop_positions.add(j)
+                # else: stable within limits → KEEP
+
+            # Refill row itself at position i → NEVER dropped
 
     cleaned = [r for i, r in enumerate(rows) if i not in drop_positions]
     return cleaned, refill_markers
@@ -189,14 +210,19 @@ def upload_file(request):
     try:
         raw_rows, sheets, summary = parse_workbook(f)
 
-        c1, m1 = clean_rows(raw_rows, apply_time_filter=True)
-        c2, m2 = clean_rows(raw_rows, apply_time_filter=False)
-
-        # Default limits from data (Mean ± 2*StdDev); frontend will override
-        # with user-supplied expected current when available
-        lo1, hi1 = compute_amp_limits(c1)
-        lo2, hi2 = compute_amp_limits(c2)
+        # Compute fallback limits from raw data for initial cleaning at upload time
+        # User can override with Expected Current later via the settings panel
         lo_raw, hi_raw = compute_amp_limits(raw_rows)
+
+        # V1 — clean with time filter, smart drop using fallback limits
+        c1, m1 = clean_rows(raw_rows, apply_time_filter=True,
+                             amp_lo=lo_raw, amp_hi=hi_raw)
+        lo1, hi1 = compute_amp_limits(c1)
+
+        # V2 — clean full day, smart drop using fallback limits
+        c2, m2 = clean_rows(raw_rows, apply_time_filter=False,
+                             amp_lo=lo_raw, amp_hi=hi_raw)
+        lo2, hi2 = compute_amp_limits(c2)
 
         return JsonResponse({
             'success': True,
@@ -222,7 +248,6 @@ def filter_data(request):
         filters    = body.get('filters', {})
         markers_in = body.get('refillMarkers', [])
 
-        # Expected current limit params (from frontend settings panel)
         expected_current = body.get('expectedCurrent', None)
         tolerance_pct    = body.get('tolerancePct', 10)
 
@@ -251,12 +276,12 @@ def filter_data(request):
         if sheet != 'all':
             markers_out = [m for m in markers_in if m.get('sheet', '') == sheet]
 
-        # Compute limits — use expected current if provided, else fallback to stats
         ec = float(expected_current) if expected_current else None
-        lo, hi = compute_amp_limits(result, expected_current=ec, tolerance_pct=float(tolerance_pct))
+        lo, hi = compute_amp_limits(result, expected_current=ec,
+                                    tolerance_pct=float(tolerance_pct))
 
-        accuracy      = compute_accuracy(result, lo, hi)
-        out_of_range  = compute_out_of_range(result, lo, hi)
+        accuracy        = compute_accuracy(result, lo, hi)
+        out_of_range    = compute_out_of_range(result, lo, hi)
         min_range_count = sum(1 for r in result if r['amp'] >= lo)
         max_range_count = sum(1 for r in result if r['amp'] <= hi)
 
@@ -296,8 +321,7 @@ def export_excel(request):
         wb.remove(wb.active)
 
         from collections import defaultdict
-        from openpyxl.styles import Font, PatternFill, Alignment, PatternFill
-        from openpyxl.styles import numbers as xlnum
+        from openpyxl.styles import Font, PatternFill, Alignment
 
         groups = defaultdict(list)
         for r in rows:
@@ -320,9 +344,9 @@ def export_excel(request):
                 cell.alignment = Alignment(horizontal='center')
 
             for r in sheet_rows:
-                amp  = r.get('amp', 0)
+                amp    = r.get('amp', 0)
                 within = 'YES' if amp_lo <= amp <= amp_hi else 'NO'
-                row_data = [
+                ws.append([
                     r.get('id', ''),      r.get('userId', ''),
                     r.get('glucose', ''), amp,
                     amp_lo,               amp_hi,
@@ -330,10 +354,8 @@ def export_excel(request):
                     r.get('date', ''),    r.get('time', ''),
                     r.get('note', ''),    r.get('deviceId', ''),
                     r.get('status', ''),
-                ]
-                ws.append(row_data)
-                # colour the Within Range cell
-                cell = ws.cell(row=ws.max_row, column=7)
+                ])
+                cell      = ws.cell(row=ws.max_row, column=7)
                 cell.fill = ok_fill if within == 'YES' else bad_fill
                 cell.font = Font(bold=True,
                                  color='006100' if within == 'YES' else '9C0006')
@@ -342,7 +364,6 @@ def export_excel(request):
                 w = max((len(str(c.value or '')) for c in col), default=8)
                 ws.column_dimensions[col[0].column_letter].width = min(w + 4, 40)
 
-        # ── Summary sheet ──
         ws_sum = wb.create_sheet(title='Summary', index=0)
         sf = PatternFill('solid', start_color='1D9E75', end_color='1D9E75')
         summary_rows = [
