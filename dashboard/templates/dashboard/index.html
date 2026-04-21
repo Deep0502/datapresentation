@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>GlucoAdmin — Monitor Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg:#0d0f14;--bg2:#13161d;--bg3:#1a1e28;--bg4:#222635;
+      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+      --text:#e8eaf0;--text2:#8a90a4;--text3:#555c72;
+      --teal:#00d4a0;--teal2:#00a87e;--teal-dim:rgba(0,212,160,0.12);
+      --amber:#f5a623;--amber-dim:rgba(245,166,35,0.12);
+      --red:#ff5c5c;--red-dim:rgba(255,92,92,0.12);
+      --blue:#4d9fff;--blue-dim:rgba(77,159,255,0.12);
+      --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+      --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+      --r:10px;--rl:14px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+    .shell{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+    .topbar{flex-shrink:0;height:50px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+    .body{display:flex;flex:1;overflow:hidden}
+    .sidebar{width:228px;min-width:228px;background:var(--bg2);border-right:1px solid var(--border);padding:14px 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+    .main{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+    .logo-dot{width:28px;height:28px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+    .logo-text{font-size:14px;font-weight:600;color:var(--text)}
+    .logo-sub{font-size:11px;color:var(--text2)}
+    .top-badge{font-size:11px;background:var(--teal-dim);color:var(--teal);padding:3px 10px;border-radius:99px;font-weight:500}
+    .top-meta{font-size:12px;color:var(--text2)}
+    .top-meta .sep{color:var(--border2);margin:0 8px}
+    .top-meta strong{color:var(--teal);font-family:var(--mono);font-weight:500}
+    .sec-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .upload-btn{width:100%;padding:9px;background:rgba(0,212,160,0.06);border:1px dashed var(--teal2);border-radius:var(--r);color:var(--teal);font-size:12px;font-weight:500;cursor:pointer;text-align:center;font-family:var(--font);transition:all .2s}
+    .upload-btn:hover{background:var(--teal-dim)}
+    .file-badge{font-size:11px;color:var(--text2);background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:4px 8px;word-break:break-all;margin-top:6px;display:none}
+    .flbl{font-size:11px;color:var(--text2);margin-bottom:3px}
+    .fsel,.finp{background:var(--bg4);color:var(--text);border:1px solid var(--border2);border-radius:var(--r);padding:6px 9px;font-size:12px;font-family:var(--font);width:100%;outline:none;transition:border-color .2s}
+    .fsel:focus,.finp:focus{border-color:var(--teal2)}
+    .fsel option{background:var(--bg4)}
+    .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+    .chip{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .15s;background:transparent}
+    .chip.active{background:var(--teal-dim);border-color:var(--teal2);color:var(--teal)}
+    .rrow{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+    .rval{font-family:var(--mono);font-size:11px;color:var(--teal);min-width:36px;text-align:right}
+    input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:var(--bg4);border-radius:99px;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--teal);cursor:pointer;box-shadow:0 0 5px rgba(0,212,160,.4)}
+    .sdiv{border-color:var(--border);margin:2px 0}
+    .ds-toggle{display:flex;border-radius:var(--r);overflow:hidden;border:1px solid var(--border2)}
+    .ds-btn{flex:1;padding:5px 0;font-size:11px;font-weight:500;background:transparent;color:var(--text2);border:none;cursor:pointer;font-family:var(--font);transition:all .15s}
+    .ds-btn.active{background:var(--teal-dim);color:var(--teal)}
+    .mcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 15px;border-top-width:2px}
+    .mlbl{font-size:11px;color:var(--text3);margin-bottom:3px;display:flex;justify-content:space-between}
+    .mval{font-size:23px;font-weight:600;font-family:var(--mono);letter-spacing:-.02em}
+    .msub{font-size:11px;color:var(--text2);margin-top:2px}
+    .c-teal{color:var(--teal)!important;border-top-color:var(--teal)!important}
+    .c-blue{color:var(--blue)!important;border-top-color:var(--blue)!important}
+    .c-purple{color:var(--purple)!important;border-top-color:var(--purple)!important}
+    .c-amber{color:var(--amber)!important;border-top-color:var(--amber)!important}
+    .ccard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:15px 17px}
+    .ctitle{font-size:13px;font-weight:600;color:var(--text)}
+    .csub{font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:10px}
+    .hscroll{overflow-x:auto;overflow-y:hidden;width:100%;-webkit-overflow-scrolling:touch}
+    .hscroll::-webkit-scrollbar{height:5px}
+    .hscroll::-webkit-scrollbar-track{background:var(--bg4);border-radius:99px}
+    .hscroll::-webkit-scrollbar-thumb{background:var(--teal2);border-radius:99px}
+    .hscroll .chart-inner{display:block;position:relative}
+    .ctbtn{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font);transition:all .15s}
+    .ctbtn.active{background:var(--teal-dim);border-color:var(--teal2);color:var(--teal)}
+    .lbadge{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500}
+    .lbadge-lo{background:var(--blue-dim);color:var(--blue)}
+    .lbadge-hi{background:var(--red-dim);color:var(--red)}
+    .leg-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+    .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+    .leg-line{width:20px;height:2px;border-radius:2px;flex-shrink:0}
+    .leg-dash{width:20px;height:0;flex-shrink:0}
+    .leg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+    .leg-diamond{width:9px;height:9px;transform:rotate(45deg);display:inline-block;border-radius:1px;flex-shrink:0}
+    .tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+    .thead-bar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .dtable{width:100%;border-collapse:collapse;font-size:12px}
+    .dtable th{padding:7px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;cursor:pointer;user-select:none}
+    .dtable th:hover{color:var(--teal)}
+    .dtable td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+    .dtable tr:last-child td{border-bottom:none}
+    .dtable tr:hover td{background:rgba(255,255,255,0.016)}
+    .mono{font-family:var(--mono)}
+    .g-hi{color:var(--amber);font-weight:600}
+    .g-lo{color:var(--red);font-weight:600}
+    .g-ok{color:var(--teal);font-weight:600}
+    .spill{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500;white-space:nowrap;display:inline-block}
+    .s-air{background:var(--blue-dim);color:var(--blue)}
+    .s-pbs{background:var(--purple-dim);color:var(--purple)}
+    .s-place{background:var(--teal-dim);color:var(--teal)}
+    .s-refill{background:var(--amber-dim);color:var(--amber)}
+    .s-warn{background:var(--red-dim);color:var(--red)}
+    .pbtn{font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font);transition:all .15s}
+    .pbtn:hover:not(:disabled){border-color:var(--teal2);color:var(--teal)}
+    .pbtn:disabled{opacity:.35;cursor:default}
+    .empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;text-align:center;padding:50px}
+    .empty-icon{font-size:52px}
+    .empty-title{font-size:19px;font-weight:600;color:var(--text)}
+    .empty-sub{font-size:13px;color:var(--text2);max-width:300px;line-height:1.7}
+    .empty-btn{padding:11px 26px;background:var(--teal-dim);border:1px solid var(--teal2);border-radius:var(--rl);color:var(--teal);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font)}
+    .info-box{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-size:11px;color:var(--text2);line-height:1.6}
+    .spin{display:none;width:15px;height:15px;border:2px solid var(--border2);border-top-color:var(--teal);border-radius:50%;animation:rot .7s linear infinite}
+    @keyframes rot{to{transform:rotate(360deg)}}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:99px}
+    /* limit settings panel */
+    .limit-box{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;font-size:11px}
+    .limit-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .limit-row:last-child{margin-bottom:0}
+    .limit-formula{font-size:10px;color:var(--text3);font-family:var(--mono)}
+    /* formula strip */
+    .formula-strip{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;font-size:11px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+    .formula-item{display:flex;align-items:center;gap:5px}
+    .formula-label{color:var(--text3)}
+    .formula-val{font-family:var(--mono);font-weight:600}
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-2">
+      <div class="logo-dot">⚡</div>
+      <div><div class="logo-text">GlucoAdmin</div><div class="logo-sub">Monitor Dashboard</div></div>
+    </div>
+    <div class="top-meta" id="topMeta"><span style="color:var(--text3)">Upload a file to get started</span></div>
+    <div class="d-flex align-items-center gap-2">
+      <div class="spin" id="spinner"></div>
+      <span class="top-badge" id="cntBadge" style="display:none"></span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+
+      <!-- upload -->
+      <div>
+        <div class="sec-title">Data Source</div>
+        <label style="cursor:pointer;display:block">
+          <div class="upload-btn">+ Upload .xlsx file</div>
+          <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none"/>
+        </label>
+        <div class="file-badge" id="fileBadge"></div>
+      </div>
+
+      <!-- dataset -->
+      <div>
+        <div class="sec-title">Dataset</div>
+        <div class="ds-toggle mb-1">
+          <button class="ds-btn active" id="btnV1" onclick="switchDS('v1')">10am–7pm</button>
+          <button class="ds-btn"        id="btnV2" onclick="switchDS('v2')">Full day</button>
+          <button class="ds-btn"        id="btnRaw" onclick="switchDS('raw')">Raw</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3)" id="dsNote">Clean · no weekends · refill±3 removed</div>
+      </div>
+
+      <hr class="sdiv"/>
+
+      <!-- amp limit settings -->
+      <div>
+        <div class="sec-title">Amp Limit Settings</div>
+        <div class="mb-2">
+          <div class="flbl">Solution</div>
+          <input type="text" class="finp" id="inSolution" value="100mgdl"/>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Expected Current (nA)</div>
+          <input type="number" class="finp" id="inExpCurrent" value="27" min="0" step="0.1"/>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Tolerance %</div>
+          <div class="rrow">
+            <input type="range" id="inTolerance" min="1" max="30" step="1" value="10"/>
+            <span class="rval" id="vTolerance">10%</span>
+          </div>
+        </div>
+        <!-- live formula preview -->
+        <div class="limit-box">
+          <div class="limit-row">
+            <span class="limit-formula">Lower = EC × (1 − tol%)</span>
+            <span style="color:var(--blue);font-family:var(--mono);font-weight:600" id="dispLo">24.3</span>
+          </div>
+          <div class="limit-row">
+            <span class="limit-formula">Upper = EC × (1 + tol%)</span>
+            <span style="color:var(--red);font-family:var(--mono);font-weight:600" id="dispHi">29.7</span>
+          </div>
+        </div>
+        <button onclick="applyLimitSettings()"
+          style="width:100%;margin-top:8px;padding:7px;background:var(--teal-dim);border:1px solid var(--teal2);border-radius:var(--r);color:var(--teal);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)">
+          ✓ Apply Limits
+        </button>
+      </div>
+
+      <hr class="sdiv"/>
+
+      <!-- filters -->
+      <div>
+        <div class="sec-title">Filters</div>
+        <div class="mb-2">
+          <div class="flbl">Sheet / Date</div>
+          <select class="fsel" id="fSheet"><option value="all">All Dates</option></select>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">User ID</div>
+          <select class="fsel" id="fUser"><option value="all">All Users</option></select>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Status</div>
+          <div class="chips" id="statusChips">
+            <div class="chip active" data-status="" onclick="toggleStatus(this)">All</div>
+          </div>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Glucose min</div>
+          <div class="rrow"><span>0</span><input type="range" id="glucMin" min="0" max="250" step="1" value="0"/><span class="rval" id="vGlucMin">≥0</span></div>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Glucose max</div>
+          <div class="rrow"><span>0</span><input type="range" id="glucMax" min="0" max="250" step="1" value="250"/><span class="rval" id="vGlucMax">≤250</span></div>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Amp max</div>
+          <div class="rrow"><span>0</span><input type="range" id="ampMax" min="0" max="300" step="1" value="300"/><span class="rval" id="vAmpMax">≤300</span></div>
+        </div>
+        <div class="mb-2">
+          <div class="flbl">Time from</div>
+          <input type="time" class="finp" id="tFrom" value="00:00"/>
+        </div>
+        <div>
+          <div class="flbl">Time to</div>
+          <input type="time" class="finp" id="tTo" value="23:59"/>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+
+    <div class="main" id="mainArea">
+
+      <!-- empty state -->
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No data loaded</div>
+        <div class="empty-sub">Upload your <code style="color:var(--teal)">.xlsx</code> glucose monitoring file to begin.</div>
+        <label style="cursor:pointer">
+          <div class="empty-btn">+ Upload .xlsx file</div>
+          <input type="file" accept=".xlsx,.xls" style="display:none"
+            onchange="document.getElementById('fileInput').files=this.files;document.getElementById('fileInput').dispatchEvent(new Event('change'))"/>
+        </label>
+      </div>
+
+      <div id="dashboard" style="display:none">
+
+        <!-- info strip + export -->
+        <div class="info-box mb-2 d-flex justify-content-between align-items-start">
+          <span id="infoText">—</span>
+          <button onclick="exportExcel()" style="flex-shrink:0;margin-left:12px;padding:4px 12px;background:var(--teal-dim);border:1px solid var(--teal2);border-radius:var(--r);color:var(--teal);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--font)">
+            ⬇ Export Excel
+          </button>
+        </div>
+
+        <!-- formula strip — always visible after upload -->
+        <div class="formula-strip mb-2">
+          <div class="formula-item">
+            <span class="formula-label">Solution:</span>
+            <span class="formula-val" style="color:var(--text)" id="fSolution">100mgdl</span>
+          </div>
+          <div class="formula-item">
+            <span class="formula-label">Expected:</span>
+            <span class="formula-val" style="color:var(--purple)" id="fEC">27 nA</span>
+          </div>
+          <div class="formula-item">
+            <span class="formula-label">Tolerance:</span>
+            <span class="formula-val" style="color:var(--text2)" id="fTol">10%</span>
+          </div>
+          <div class="formula-item">
+            <span class="formula-label">Lower =</span>
+            <span class="formula-val limit-formula" id="fLoFormula">27×0.90</span>
+            <span class="formula-label">=</span>
+            <span class="formula-val" style="color:var(--blue)" id="fLoVal">24.3</span>
+          </div>
+          <div class="formula-item">
+            <span class="formula-label">Upper =</span>
+            <span class="formula-val limit-formula" id="fHiFormula">27×1.10</span>
+            <span class="formula-label">=</span>
+            <span class="formula-val" style="color:var(--red)" id="fHiVal">29.7</span>
+          </div>
+          <div class="formula-item" style="margin-left:auto">
+            <span class="formula-label">Accuracy:</span>
+            <span class="formula-val" style="color:var(--teal)" id="fAccuracy">—</span>
+          </div>
+          <div class="formula-item">
+            <span class="formula-label">Spikes:</span>
+            <span class="formula-val" style="color:var(--red)" id="fSpikes">—</span>
+          </div>
+        </div>
+
+        <!-- metric cards row 1 -->
+        <div class="row g-2 mb-2">
+          <div class="col-6 col-xl-3">
+            <div class="mcard c-teal">
+              <div class="mlbl"><span>Total readings</span><span>📊</span></div>
+              <div class="mval c-teal" id="mTotal">0</div>
+              <div class="msub">Filtered records</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard c-blue">
+              <div class="mlbl"><span>Avg glucose</span><span>🩸</span></div>
+              <div class="mval c-blue" id="mGluc">—</div>
+              <div class="msub" id="mGlucRange">—</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard c-purple">
+              <div class="mlbl"><span>Avg amp</span><span>📡</span></div>
+              <div class="mval c-purple" id="mAmp">—</div>
+              <div class="msub" id="mAmpLim">Lower — | Upper —</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard" style="border-top-color:var(--amber)">
+              <div class="mlbl"><span>Refill events</span><span>🏷️</span></div>
+              <div class="mval" style="color:var(--amber)" id="mRefill">0</div>
+              <div class="msub">Marked on charts ◆</div>
+            </div>
+          </div>
+        </div>
+        <!-- metric cards row 2 — range counts matching screenshot -->
+        <div class="row g-2 mb-2">
+          <div class="col-6 col-xl-3">
+            <div class="mcard" style="border-top-color:var(--blue)">
+              <div class="mlbl"><span>Within Min Range</span><span>⬇</span></div>
+              <div class="mval" style="color:var(--blue)" id="mMinRangeCount">—</div>
+              <div class="msub">Amp readings ≥ <span id="mMinRangeVal">—</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard" style="border-top-color:var(--red)">
+              <div class="mlbl"><span>Within Max Range</span><span>⬆</span></div>
+              <div class="mval" style="color:var(--red)" id="mMaxRangeCount">—</div>
+              <div class="msub">Amp readings ≤ <span id="mMaxRangeVal">—</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard" style="border-top-color:var(--teal)">
+              <div class="mlbl"><span>Accuracy</span><span>✅</span></div>
+              <div class="mval" style="color:var(--teal)" id="mAccuracy">—</div>
+              <div class="msub">Within ±<span id="mTolPct">10</span>% tolerance</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="mcard" style="border-top-color:var(--red)">
+              <div class="mlbl"><span>Out of range</span><span>⚠️</span></div>
+              <div class="mval" style="color:var(--red)" id="mOutOfRange">—</div>
+              <div class="msub">Spikes beyond 90–110%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GLUCOSE CHART -->
+        <div class="ccard mb-2">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <div class="ctitle">Glucose over time</div>
+              <div class="csub">Scroll right to explore all timestamps &nbsp;·&nbsp; ◆ = Refilled event</div>
+            </div>
+            <div class="d-flex gap-1">
+              <button class="ctbtn active" id="btnLine" onclick="setGlucType(this,'line')">Line</button>
+              <button class="ctbtn"        id="btnBar"  onclick="setGlucType(this,'bar')">Bar</button>
+            </div>
+          </div>
+          <div class="leg-row">
+            <span class="leg-item"><span class="leg-line" style="background:#00d4a0"></span>Glucose (mg/dL)</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled event</span>
+          </div>
+          <div class="hscroll" id="wrapGluc">
+            <div class="chart-inner" id="innerGluc"><canvas id="cGluc" height="120"></canvas></div>
+          </div>
+        </div>
+
+        <!-- AMP CHART -->
+        <div class="ccard mb-2">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <div class="ctitle">Amp vs time</div>
+              <div class="csub">Dashed lines = control limits &nbsp;·&nbsp; ◆ = Refilled event &nbsp;·&nbsp; Scroll to zoom · drag to pan</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="lbadge lbadge-lo" id="loLabel">Lower: —</span>
+              <span class="lbadge lbadge-hi" id="hiLabel">Upper: —</span>
+              <button class="ctbtn" onclick="ampZoom('in')"  title="Zoom in">＋</button>
+              <button class="ctbtn" onclick="ampZoom('out')" title="Zoom out">－</button>
+              <button class="ctbtn" onclick="ampZoomReset()" title="Reset zoom">↺ Reset</button>
+            </div>
+          </div>
+          <div class="leg-row">
+            <span class="leg-item"><span class="leg-line" style="background:#00d4a0"></span>Amp</span>
+            <span class="leg-item" style="color:#ff5c5c"><span class="leg-dash" style="border-top:2px dashed #ff5c5c"></span>&nbsp;Upper limit</span>
+            <span class="leg-item" style="color:#f59e0b"><span class="leg-dash" style="border-top:2px dashed #f59e0b"></span>&nbsp;Lower limit</span>
+            <span class="leg-item"><span class="leg-diamond" style="background:#f5a623"></span>Refilled event</span>
+          </div>
+          <div class="hscroll" id="wrapAmp">
+            <div class="chart-inner" id="innerAmp"><canvas id="cAmp" height="400"></canvas></div>
+          </div>
+        </div>
+
+        <!-- DAILY + SCATTER -->
+        <div class="row g-2 mb-2">
+          <div class="col-12 col-xl-6">
+            <div class="ccard">
+              <div class="ctitle">Avg glucose per date</div>
+              <div class="csub">Daily comparison · amber = highest day</div>
+              <div class="leg-row">
+                <span class="leg-item"><span class="leg-dot" style="background:#a78bfa"></span>Daily avg</span>
+                <span class="leg-item"><span class="leg-dot" style="background:#f5a623"></span>Peak day</span>
+              </div>
+              <div style="position:relative;height:220px;width:100%">
+                <canvas id="cDaily"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-6">
+            <div class="ccard">
+              <div class="ctitle">Glucose vs Amp</div>
+              <div class="csub">Correlation scatter · color = status</div>
+              <div class="leg-row" id="scatterLeg"></div>
+              <div style="position:relative;height:220px;width:100%">
+                <canvas id="cScatter"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="tcard">
+          <div class="thead-bar">
+            <span style="font-size:13px;font-weight:600;color:var(--text)">Reading records</span>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="tCount">0 rows</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="dtable">
+              <thead><tr>
+                <th onclick="srt('id')">ID</th>
+                <th onclick="srt('userId')">User ID</th>
+                <th onclick="srt('glucose')">Glucose ↕</th>
+                <th onclick="srt('amp')">Amp ↕</th>
+                <th onclick="srt('date')">Date ↕</th>
+                <th>Time</th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody id="tBody"></tbody>
+            </table>
+          </div>
+          <div style="padding:9px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px">
+            <button class="pbtn" id="prevBtn" onclick="pgChange(-1)" disabled>← Prev</button>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="pgInfo">Page 1/1</span>
+            <button class="pbtn" id="nextBtn" onclick="pgChange(1)">Next →</button>
+          </div>
+        </div>
+
+      </div><!-- /dashboard -->
+    </div><!-- /main -->
+  </div><!-- /body -->
+</div><!-- /shell -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+// ── constants ──────────────────────────────────────────────────────────
+const SC={'In Air':'#4d9fff','PBS':'#a78bfa','50 mgdl Placed':'#00d4a0',
+  'Refilled':'#f5a623','refilled':'#f5a623',
+  'Solution Goes above the sensor Implant lenth':'#ff5c5c','':'#555c72'};
+const SP={'In Air':'s-air','PBS':'s-pbs','50 mgdl Placed':'s-place',
+  'Refilled':'s-refill','refilled':'s-refill',
+  'Solution Goes above the sensor Implant lenth':'s-warn'};
+const GRID='rgba(255,255,255,0.05)', TICK='#555c72';
+const TT={backgroundColor:'#1a1e28',borderColor:'rgba(255,255,255,.1)',borderWidth:1,
+  titleColor:'#e8eaf0',bodyColor:'#8a90a4',padding:10};
+const PAGE=15, PX=20;
+const DS_NOTES={
+  v1:'✅ Clean · Sat/Sun removed · 10am–7pm · Refill ±3 removed',
+  v2:'✅ Clean · Sat/Sun removed · Full day · Refill ±3 removed',
+  raw:'⚠️ Raw data — no cleaning applied'
+};
+
+// ── state ──────────────────────────────────────────────────────────────
+let SRV=null, activeDS='v1';
+let dsRows=[],dsMarkers=[],dsLo=0,dsHi=0;
+let filtRows=[],filtMarkers=[],curLo=0,curHi=0;
+let glucType='line', sortKey='',sortDir=1,pg=0;
+let chGluc=null,chAmp=null,chDaily=null,chScatter=null;
+let activeStatuses=[];
+let limitExpCurrent=27, limitTolPct=10, limitSolution='100mgdl';
+
+// ── upload ─────────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change',async function(){
+  const file=this.files[0]; if(!file) return;
+  spin(true);
+  const fd=new FormData(); fd.append('file',file);
+  try{
+    const res=await fetch('/upload/',{method:'POST',body:fd});
+    const data=await res.json();
+    if(!data.success){alert('Error: '+(data.error||'unknown'));spin(false);return;}
+    SRV=data;
+    document.getElementById('fileBadge').textContent='📄 '+file.name;
+    document.getElementById('fileBadge').style.display='block';
+    const fs=document.getElementById('fSheet');
+    fs.innerHTML='<option value="all">All Dates</option>';
+    data.sheets.forEach(s=>fs.innerHTML+=`<option value="${s}">${s}</option>`);
+    const us=[...new Set(data.rawRows.map(r=>r.userId))].filter(Boolean);
+    const fu=document.getElementById('fUser');
+    fu.innerHTML='<option value="all">All Users</option>';
+    us.forEach(u=>fu.innerHTML+=`<option value="${u}">${u}</option>`);
+    buildChips();
+    if(data.summary){
+      const s=data.summary;
+      document.getElementById('topMeta').innerHTML=
+        `<span style="color:var(--text3)">Board: </span><strong>${s['Board ID']||'—'}</strong>`+
+        `<span class="sep">|</span><span style="color:var(--text3)">Solution: </span><strong>${s['Solution Used']||'—'}</strong>`+
+        `<span class="sep">|</span><span style="color:var(--text3)">Start: </span>`+
+        `<span style="color:var(--text);font-family:var(--mono)">${s['Start Date']||'—'}</span>`;
+    }
+    document.getElementById('emptyState').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    updateFormulaStrip();
+    switchDS('v1');
+  }catch(e){alert('Upload failed: '+e.message);}
+  spin(false);
+});
+
+// ── dataset switch ─────────────────────────────────────────────────────
+function switchDS(ds){
+  activeDS=ds;
+  ['v1','v2','raw'].forEach(k=>{
+    document.getElementById('btn'+k.charAt(0).toUpperCase()+k.slice(1))
+      .classList.toggle('active',k===ds);
+  });
+  document.getElementById('dsNote').textContent=DS_NOTES[ds];
+  const d=SRV[ds];
+  dsRows=d.rows; dsMarkers=d.refillMarkers||[];
+  dsLo=d.ampLower; dsHi=d.ampUpper;
+  applyFilters();
+}
+
+// ── chips ──────────────────────────────────────────────────────────────
+function buildChips(){
+  const found=[...new Set(SRV.rawRows.map(r=>r.status).filter(s=>s&&s.trim()))].sort();
+  const c=document.getElementById('statusChips');
+  c.innerHTML='<div class="chip active" data-status="" onclick="toggleStatus(this)">All</div>';
+  found.forEach(st=>{
+    const s=st.length>13?st.slice(0,13)+'…':st;
+    c.innerHTML+=`<div class="chip" data-status="${st}" title="${st}" onclick="toggleStatus(this)">${s}</div>`;
+  });
+}
+function toggleStatus(el){
+  const v=el.dataset.status;
+  if(v===''){
+    activeStatuses=[];
+    document.querySelectorAll('#statusChips .chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+  } else {
+    document.querySelector('#statusChips .chip[data-status=""]').classList.remove('active');
+    el.classList.toggle('active');
+    activeStatuses=[...document.querySelectorAll('#statusChips .chip.active:not([data-status=""])')].map(c=>c.dataset.status);
+    if(!activeStatuses.length) document.querySelector('#statusChips .chip[data-status=""]').classList.add('active');
+  }
+  applyFilters();
+}
+
+// ── sliders & selects ──────────────────────────────────────────────────
+document.getElementById('glucMin').addEventListener('input',function(){document.getElementById('vGlucMin').textContent='≥'+this.value;applyFilters();});
+document.getElementById('glucMax').addEventListener('input',function(){document.getElementById('vGlucMax').textContent='≤'+this.value;applyFilters();});
+document.getElementById('ampMax') .addEventListener('input',function(){document.getElementById('vAmpMax') .textContent='≤'+this.value;applyFilters();});
+['fSheet','fUser','tFrom','tTo'].forEach(id=>document.getElementById(id).addEventListener('change',applyFilters));
+
+// ── limit settings ─────────────────────────────────────────────────────
+function calcLimits(ec,tol){
+  const lo=Math.round(ec*(1-tol/100)*100)/100;
+  const hi=Math.round(ec*(1+tol/100)*100)/100;
+  return {lo,hi};
+}
+function updateSidebarPreview(){
+  const ec =parseFloat(document.getElementById('inExpCurrent').value)||0;
+  const tol=parseFloat(document.getElementById('inTolerance').value)||10;
+  if(ec>0){const {lo,hi}=calcLimits(ec,tol);document.getElementById('dispLo').textContent=lo;document.getElementById('dispHi').textContent=hi;}
+}
+function updateFormulaStrip(){
+  const ec =limitExpCurrent||0;
+  const tol=limitTolPct||10;
+  const {lo,hi}=calcLimits(ec,tol);
+  const loMult=(1-tol/100).toFixed(2), hiMult=(1+tol/100).toFixed(2);
+  document.getElementById('fSolution').textContent  = limitSolution||'—';
+  document.getElementById('fEC').textContent         = ec+' nA';
+  document.getElementById('fTol').textContent        = tol+'%';
+  document.getElementById('fLoFormula').textContent  = `${ec}×${loMult}`;
+  document.getElementById('fHiFormula').textContent  = `${ec}×${hiMult}`;
+  document.getElementById('fLoVal').textContent      = lo;
+  document.getElementById('fHiVal').textContent      = hi;
+  document.getElementById('dispLo').textContent      = lo;
+  document.getElementById('dispHi').textContent      = hi;
+}
+function applyLimitSettings(){
+  limitExpCurrent=parseFloat(document.getElementById('inExpCurrent').value)||0;
+  limitTolPct    =parseFloat(document.getElementById('inTolerance').value)||10;
+  limitSolution  =document.getElementById('inSolution').value||'—';
+  dsLo=0; dsHi=0; // force use of user-supplied limits
+  updateFormulaStrip();
+  applyFilters();
+}
+document.getElementById('inExpCurrent').addEventListener('input',updateSidebarPreview);
+document.getElementById('inTolerance').addEventListener('input',function(){
+  document.getElementById('vTolerance').textContent=this.value+'%';
+  updateSidebarPreview();
+});
+
+// ── apply filters ──────────────────────────────────────────────────────
+async function applyFilters(){
+  if(!dsRows.length) return;
+  spin(true);
+  const filters={
+    sheet:     document.getElementById('fSheet').value,
+    userId:    document.getElementById('fUser').value,
+    statuses:  activeStatuses,
+    glucoseMin:+document.getElementById('glucMin').value,
+    glucoseMax:+document.getElementById('glucMax').value,
+    ampMax:    +document.getElementById('ampMax').value,
+    timeFrom:   document.getElementById('tFrom').value,
+    timeTo:     document.getElementById('tTo').value,
+  };
+  const res=await fetch('/filter/',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      rows:dsRows, filters, refillMarkers:dsMarkers,
+      expectedCurrent: limitExpCurrent||null,
+      tolerancePct:    limitTolPct,
+    })});
+  const data=await res.json();
+  filtRows    =data.rows;
+  filtMarkers =data.refillMarkers||dsMarkers;
+  curLo = limitExpCurrent ? data.ampLower : (dsLo||data.ampLower);
+  curHi = limitExpCurrent ? data.ampUpper : (dsHi||data.ampUpper);
+  pg=0;
+  updateMetrics(data.accuracy, data.outOfRange, data.minRangeCount, data.maxRangeCount);
+  renderCharts();
+  renderTable();
+  document.getElementById('cntBadge').textContent=`● ${dsRows.length} total · ${filtRows.length} shown`;
+  document.getElementById('cntBadge').style.display='inline';
+  document.getElementById('infoText').innerHTML=
+    `<strong style="color:var(--teal)">${DS_NOTES[activeDS]}</strong><br>`+
+    `Rows: <strong>${filtRows.length}</strong> &nbsp;|&nbsp; `+
+    `Refill events: <strong>${dsMarkers.length}</strong> &nbsp;|&nbsp; `+
+    `Amp limits: <strong style="color:var(--blue)">${curLo}</strong> – <strong style="color:var(--red)">${curHi}</strong>`;
+  // update formula strip accuracy
+  if(data.accuracy!=null) document.getElementById('fAccuracy').textContent=data.accuracy+'%';
+  if(data.outOfRange!=null) document.getElementById('fSpikes').textContent=data.outOfRange;
+  spin(false);
+}
+
+// ── metrics ────────────────────────────────────────────────────────────
+function updateMetrics(accuracy,outOfRange,minRangeCount,maxRangeCount){
+  const n=filtRows.length;
+  document.getElementById('mTotal').textContent=n.toLocaleString();
+  document.getElementById('mRefill').textContent=dsMarkers.length;
+  document.getElementById('loLabel').textContent='Lower: '+curLo;
+  document.getElementById('hiLabel').textContent='Upper: '+curHi;
+  document.getElementById('mTolPct').textContent=limitTolPct;
+  // update min/max range val labels
+  document.getElementById('mMinRangeVal').textContent=curLo;
+  document.getElementById('mMaxRangeVal').textContent=curHi;
+  document.getElementById('mAccuracy').textContent   = accuracy!=null ? accuracy+'%' : '—';
+  document.getElementById('mOutOfRange').textContent = outOfRange!=null ? outOfRange : '—';
+  if(!n){
+    ['mGluc','mAmp','mMinRangeCount','mMaxRangeCount'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('mAmpLim').textContent='Lower — | Upper —';
+    return;
+  }
+  const gs=filtRows.map(r=>r.glucose), as=filtRows.map(r=>r.amp);
+  const avg=a=>(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1);
+  document.getElementById('mGluc').textContent=avg(gs);
+  document.getElementById('mGlucRange').textContent=`Range: ${Math.min(...gs)}–${Math.max(...gs)} mg/dL`;
+  document.getElementById('mAmp').textContent=avg(as);
+  document.getElementById('mAmpLim').textContent=`Lower ${curLo} | Upper ${curHi}`;
+  // count readings within lower and upper limit — use server value if provided
+  const withinLo = minRangeCount!=null ? minRangeCount : as.filter(a=>a>=curLo).length;
+  const withinHi = maxRangeCount!=null ? maxRangeCount : as.filter(a=>a<=curHi).length;
+  document.getElementById('mMinRangeCount').textContent=withinLo.toLocaleString();
+  document.getElementById('mMaxRangeCount').textContent=withinHi.toLocaleString();
+}
+
+// ── charts ─────────────────────────────────────────────────────────────
+function destroyCharts(){
+  if(chGluc){chGluc.destroy();chGluc=null;}
+  if(chAmp){chAmp.destroy();chAmp=null;}
+  if(chDaily){chDaily.destroy();chDaily=null;}
+  if(chScatter){chScatter.destroy();chScatter=null;}
+}
+function mkLabels(rows){return rows.map(r=>`${r.date.slice(5)} ${r.time.slice(0,5)}`);}
+function mkRefillOverlay(rows,key){
+  const arr=new Array(rows.length).fill(null);
+  filtMarkers.forEach(m=>{
+    const mKey=m.date+' '+m.time.slice(0,8);
+    rows.forEach((r,i)=>{if(r.date+' '+r.time.slice(0,8)===mKey) arr[i]=rows[i][key];});
+  });
+  return arr;
+}
+function setScrollWidth(innerId,canvasId,n){
+  const w=Math.max(n*PX,700);
+  const inner=document.getElementById(innerId), canvas=document.getElementById(canvasId);
+  inner.style.width=w+'px'; inner.style.minWidth=w+'px';
+  canvas.style.width=w+'px'; canvas.style.minWidth=w+'px';
+  canvas.width=w;
+  // amp chart is taller
+  canvas.height = canvasId==='cAmp' ? 400 : 120;
+}
+
+function renderCharts(){
+  destroyCharts();
+  const rows=filtRows; if(!rows.length) return;
+  const labels=mkLabels(rows);
+  const glucData=rows.map(r=>r.glucose), ampData=rows.map(r=>r.amp);
+  const rGluc=mkRefillOverlay(rows,'glucose'), rAmp=mkRefillOverlay(rows,'amp');
+  const n=rows.length;
+  setScrollWidth('innerGluc','cGluc',n);
+  setScrollWidth('innerAmp','cAmp',n);
+
+  // GLUCOSE
+  const glucDS=glucType==='bar'
+    ?{label:'Glucose',data:glucData,backgroundColor:'rgba(0,212,160,0.65)',borderRadius:2,order:2}
+    :{label:'Glucose',data:glucData,borderColor:'#00d4a0',backgroundColor:'rgba(0,212,160,0.07)',
+      tension:0.35,fill:true,pointRadius:4,pointHoverRadius:7,
+      pointBackgroundColor:'#00d4a0',pointBorderColor:'#00d4a0',borderWidth:2,order:2};
+  chGluc=new Chart(document.getElementById('cGluc').getContext('2d'),{
+    type:glucType==='bar'?'bar':'line',
+    data:{labels,datasets:[glucDS,
+      {label:'Refilled',data:rGluc,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
+       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1}]},
+    options:{responsive:false,maintainAspectRatio:false,animation:{duration:200},
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{
+        title:ctx=>{const row=filtRows[ctx[0].dataIndex];return row?`${row.date}  ${row.time.slice(0,8)}`:'';}  ,
+        label:ctx=>{
+          if(ctx.dataset.label==='Refilled') return [`◆ Refilled: ${ctx.parsed.y} mg/dL`];
+          const row=filtRows[ctx.dataIndex];
+          const lines=[`🩸 Glucose: ${ctx.parsed.y} mg/dL`];
+          if(row&&row.status&&row.status.trim()) lines.push(`📋 Status: ${row.status}`);
+          lines.push(`⬇ Lower: ${curLo}  ⬆ Upper: ${curHi}`);
+          return lines;
+        }
+      }}},
+      scales:{x:{ticks:{color:TICK,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40},grid:{color:GRID}},
+              y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID},title:{display:true,text:'Glucose (mg/dL)',color:TICK,font:{size:10}}}}
+    }
+  });
+
+  // AMP
+  const loArr=new Array(n).fill(curLo), hiArr=new Array(n).fill(curHi);
+  // fix canvas height for amp chart
+  document.getElementById('cAmp').height=400;
+  chAmp=new Chart(document.getElementById('cAmp').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Amp',data:ampData,borderColor:'#00d4a0',backgroundColor:'rgba(0,212,160,0.07)',
+       tension:0.35,fill:true,pointRadius:4,pointHoverRadius:7,
+       pointBackgroundColor:'#00d4a0',pointBorderColor:'#00d4a0',borderWidth:2.5,order:3},
+      {label:'Upper limit',data:hiArr,borderColor:'#ff5c5c',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:2},
+      {label:'Lower limit',data:loArr,borderColor:'#f59e0b',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false,order:2},
+      {label:'Refilled',data:rAmp,type:'scatter',pointStyle:'rectRot',pointRadius:9,pointHoverRadius:11,
+       backgroundColor:'#f5a623',borderColor:'#f5a623',order:1}]},
+    options:{responsive:false,maintainAspectRatio:false,animation:{duration:200},
+      plugins:{
+        legend:{display:false},
+        zoom:{
+          zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},
+          pan:{enabled:true,mode:'x'},
+        },
+        tooltip:{...TT,callbacks:{
+        title:ctx=>{const row=filtRows[ctx[0].dataIndex];return row?`${row.date}  ${row.time.slice(0,8)}`:'';}  ,
+        label:ctx=>{
+          if(ctx.dataset.label==='Refilled') return [`◆ Refilled — Amp: ${ctx.parsed.y}`];
+          if(ctx.dataset.label==='Upper limit') return [`⬆ Upper limit: ${curHi}`];
+          if(ctx.dataset.label==='Lower limit') return [`⬇ Lower limit: ${curLo}`];
+          const row=filtRows[ctx.dataIndex];
+          const lines=[`⚡ Amp: ${ctx.parsed.y}`];
+          if(row&&row.status&&row.status.trim()) lines.push(`📋 Status: ${row.status}`);
+          lines.push(`⬇ Lower: ${curLo}  ⬆ Upper: ${curHi}`);
+          return lines;
+        }
+      }}},
+      scales:{x:{ticks:{color:TICK,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:40},grid:{color:GRID}},
+              y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID},title:{display:true,text:'Amp',color:TICK,font:{size:10}},
+                 suggestedMin:Math.max(0,curLo-3),suggestedMax:curHi+3}}
+    }
+  });
+
+  // DAILY AVG
+  const grp={};
+  rows.forEach(r=>{if(!grp[r.sheet])grp[r.sheet]=[];grp[r.sheet].push(r.glucose);});
+  const dL=Object.keys(grp).map(s=>s.slice(0,8));
+  const dD=Object.values(grp).map(vs=>+(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(1));
+  const mx=dD.length?Math.max(...dD):0;
+  if(chDaily){chDaily.destroy();chDaily=null;}
+  chDaily=new Chart(document.getElementById('cDaily'),{
+    type:'bar',
+    data:{labels:dL.length?dL:['No data'],datasets:[{label:'Avg glucose',data:dD.length?dD:[0],
+      backgroundColor:dD.map(v=>v===mx?'#f5a623':'#a78bfa'),borderRadius:4,barPercentage:0.5}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:false},tooltip:TT},
+      scales:{x:{ticks:{color:TICK,font:{size:11},autoSkip:false,maxRotation:0},grid:{color:'transparent'}},
+              y:{ticks:{color:TICK,font:{size:11},callback:v=>v+' mg'},grid:{color:GRID},
+                 title:{display:true,text:'mg/dL',color:TICK,font:{size:11}},
+                 min:Math.max(0,Math.min(...(dD.length?dD:[0]))-10)}}
+    }
+  });
+
+  // SCATTER
+  const stMap={};
+  rows.forEach(r=>{const st=(r.status&&r.status.trim())?r.status.trim():'Normal';if(!stMap[st])stMap[st]=[];stMap[st].push({x:r.glucose,y:r.amp});});
+  const scatterColors={'Normal':'#00d4a0','In Air':'#4d9fff','PBS':'#a78bfa','50 mgdl Placed':'#00d4a0','Refilled':'#f5a623','refilled':'#f5a623','Solution Goes above the sensor Implant lenth':'#ff5c5c'};
+  if(chScatter){chScatter.destroy();chScatter=null;}
+  chScatter=new Chart(document.getElementById('cScatter'),{
+    type:'scatter',
+    data:{datasets:Object.entries(stMap).map(([st,pts])=>({label:st,data:pts,backgroundColor:(scatterColors[st]||'#888780')+'cc',pointRadius:5,pointHoverRadius:8}))},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:true,position:'bottom',labels:{color:TICK,font:{size:10},boxWidth:10,padding:8}},
+               tooltip:{...TT,callbacks:{label:ctx=>`${ctx.dataset.label} — Glucose: ${ctx.parsed.x}  Amp: ${ctx.parsed.y}`}}},
+      scales:{x:{ticks:{color:TICK,font:{size:11}},grid:{color:GRID},title:{display:true,text:'Glucose (mg/dL)',color:TICK,font:{size:11}}},
+              y:{ticks:{color:TICK,font:{size:11}},grid:{color:GRID},title:{display:true,text:'Amp',color:TICK,font:{size:11}}}}
+    }
+  });
+  document.getElementById('scatterLeg').innerHTML=Object.keys(stMap).map(st=>
+    `<span class="leg-item"><span class="leg-dot" style="background:${scatterColors[st]||'#888780'}"></span>${st.length>20?st.slice(0,20)+'…':st}</span>`).join('');
+}
+
+function setGlucType(btn,type){
+  glucType=type;
+  document.querySelectorAll('.ctbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(filtRows.length) renderCharts();
+}
+
+// ── table ──────────────────────────────────────────────────────────────
+function renderTable(){
+  let rows=[...filtRows];
+  if(sortKey) rows.sort((a,b)=>a[sortKey]>b[sortKey]?sortDir:-sortDir);
+  const tot=rows.length,pages=Math.max(1,Math.ceil(tot/PAGE));
+  const slice=rows.slice(pg*PAGE,(pg+1)*PAGE);
+  document.getElementById('tCount').textContent=tot.toLocaleString()+' rows';
+  document.getElementById('pgInfo').textContent=`Page ${pg+1}/${pages}`;
+  document.getElementById('prevBtn').disabled=pg===0;
+  document.getElementById('nextBtn').disabled=pg>=pages-1;
+  const pill=st=>{if(!st) return '<span style="color:var(--text3)">—</span>';const cls=SP[st]||'s-warn';return `<span class="spill ${cls}" title="${st}">${st.length>18?st.slice(0,18)+'…':st}</span>`;};
+  const gc=g=>g>100?'g-hi':g<50?'g-lo':'g-ok';
+  document.getElementById('tBody').innerHTML=slice.map(r=>`
+    <tr>
+      <td class="mono" style="color:var(--text3);font-size:11px">${r.id}</td>
+      <td class="mono" style="color:var(--text2);font-size:11px">${r.userId}</td>
+      <td class="${gc(r.glucose)}">${r.glucose}</td>
+      <td>${r.amp}</td>
+      <td style="color:var(--text2)">${r.date}</td>
+      <td class="mono" style="color:var(--text2)">${(r.time||'').slice(0,8)}</td>
+      <td>${pill(r.status)}</td>
+    </tr>`).join('');
+}
+function pgChange(d){const pages=Math.ceil(filtRows.length/PAGE);pg=Math.max(0,Math.min(pages-1,pg+d));renderTable();}
+function srt(k){if(sortKey===k)sortDir=-sortDir;else{sortKey=k;sortDir=1;}pg=0;renderTable();}
+function spin(v){document.getElementById('spinner').style.display=v?'block':'none';}
+
+// ── amp zoom controls ──────────────────────────────────────────────────
+function ampZoom(dir){
+  if(!chAmp) return;
+  if(dir==='in')  chAmp.zoom(1.3);
+  if(dir==='out') chAmp.zoom(0.7);
+}
+function ampZoomReset(){
+  if(!chAmp) return;
+  chAmp.resetZoom();
+}
+
+// ── export excel ───────────────────────────────────────────────────────
+async function exportExcel(){
+  if(!filtRows.length){alert('No data to export.');return;}
+  const btn=event.target; btn.textContent='Exporting…'; btn.disabled=true;
+  try{
+    const res=await fetch('/export/',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        rows:filtRows, ampLower:curLo, ampUpper:curHi, label:DS_NOTES[activeDS],
+        solution:limitSolution, expectedCurrent:limitExpCurrent, tolerancePct:limitTolPct,
+        accuracy:document.getElementById('fAccuracy').textContent,
+        outOfRange:document.getElementById('fSpikes').textContent,
+      })});
+    if(!res.ok){const e=await res.json();alert('Export error: '+e.error);return;}
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='glucose_clean_export.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){alert('Export failed: '+e.message);}
+  btn.textContent='⬇ Export Excel'; btn.disabled=false;
+}
+</script>
+</body>
+</html>
