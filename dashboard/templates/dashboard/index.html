@@ -404,9 +404,12 @@
               <button class="ctbtn" onclick="ampZoom('out')" title="Zoom out">－</button>
               <button class="ctbtn" onclick="ampZoomReset()" title="Reset zoom">↺ Reset</button>
               <!-- NEW: PDF export button -->
-              <button class="pdf-btn" id="ampPdfBtn" onclick="exportAmpPDF()" title="Export full Amp chart to PDF">
+              <!-- <button class="pdf-btn" id="ampPdfBtn" onclick="exportAmpPDF()" title="Export full Amp chart to PDF">
                 📄 Export PDF
-              </button>
+              </button> -->
+              <button class="pdf-btn" id="ampPngBtn" onclick="exportAmpPNG()" title="Download full Amp chart as PNG" style="border-color:rgba(0,212,160,0.4);background:rgba(0,212,160,0.08);color:#00d4a0">
+              🖼 Download PNG
+            </button>
             </div>
           </div>
           <div class="leg-row">
@@ -952,127 +955,145 @@ function ampZoomReset(){
   chAmp.resetZoom();
 }
 
-// ── export amp chart as PDF ────────────────────────────────────────────
-async function exportAmpPDF(){
+// // ── export amp chart as PDF ────────────────────────────────────────────
+// async function exportAmpPDF(){
+//   if(!chAmp){alert('No Amp chart to export.');return;}
+
+//   const btn = document.getElementById('ampPdfBtn');
+//   btn.disabled = true;
+//   btn.textContent = '⏳ Generating…';
+
+//   try{
+//     // 1. Get the full canvas (entire width — not just visible scroll area)
+//     const canvas = document.getElementById('cAmp');
+//     const chartW = canvas.width;   // full pixel width of the chart
+//     const chartH = canvas.height;  // 400px
+
+//     // 2. Capture canvas as PNG image data
+//     const imgData = canvas.toDataURL('image/png', 1.0);
+
+//     // 3. Calculate PDF page dimensions
+//     //    We use the chart's natural aspect ratio and fit to a landscape page.
+//     //    jsPDF works in mm by default. We'll make the page exactly fit the chart.
+//     //    Max page width: 841mm (A1 landscape) — for very wide charts we scale down.
+//     const { jsPDF } = window.jspdf;
+
+//     // Header area height in mm
+//     const HEADER_H   = 28;   // mm reserved for metadata header at top
+//     const MARGIN      = 10;   // mm margin on each side
+//     const MAX_PAGE_W  = 1200; // mm max page width (handles very wide charts)
+
+//     // Scale chart to fit within MAX_PAGE_W minus margins
+//     const availW   = MAX_PAGE_W - MARGIN * 2;
+//     const scale    = Math.min(1, availW / (chartW * 0.264583)); // px to mm: 1px = 0.264583mm
+//     const imgW_mm  = chartW * 0.264583 * scale;
+//     const imgH_mm  = chartH * 0.264583 * scale;
+//     const pageW_mm = imgW_mm + MARGIN * 2;
+//     const pageH_mm = imgH_mm + HEADER_H + MARGIN + 10; // +10 bottom margin
+
+//     // 4. Create PDF with custom page size (landscape orientation)
+//     const doc = new jsPDF({
+//       orientation: pageW_mm > pageH_mm ? 'landscape' : 'portrait',
+//       unit: 'mm',
+//       format: [pageW_mm, pageH_mm],
+//     });
+
+//     // 5. Draw dark background to match dashboard theme
+//     doc.setFillColor(13, 15, 20);         // --bg: #0d0f14
+//     doc.rect(0, 0, pageW_mm, pageH_mm, 'F');
+
+//     // 6. Header bar background
+//     doc.setFillColor(19, 22, 29);         // --bg2: #13161d
+//     doc.rect(0, 0, pageW_mm, HEADER_H, 'F');
+
+//     // 7. Teal accent line under header
+//     doc.setDrawColor(0, 212, 160);        // --teal
+//     doc.setLineWidth(0.5);
+//     doc.line(0, HEADER_H, pageW_mm, HEADER_H);
+
+//     // 8. Title text
+//     doc.setFont('helvetica', 'bold');
+//     doc.setFontSize(13);
+//     doc.setTextColor(232, 234, 240);      // --text
+//     doc.text('GlucoAdmin — Amp vs Time', MARGIN, 9);
+
+//     // 9. Metadata row 1: Solution / Expected / Tolerance
+//     doc.setFont('helvetica', 'normal');
+//     doc.setFontSize(8);
+//     doc.setTextColor(138, 144, 164);      // --text2
+//     const meta1 = `Solution: ${limitSolution}   |   Expected: ${limitExpCurrent} nA   |   Tolerance: ${limitTolPct}%`;
+//     doc.text(meta1, MARGIN, 15);
+
+//     // 10. Metadata row 2: Limits / Accuracy / Rows
+//     const accEl = document.getElementById('fAccuracy').textContent;
+//     const spikeEl = document.getElementById('fSpikes').textContent;
+//     const meta2 = `Lower limit: ${curLo}   |   Upper limit: ${curHi}   |   Accuracy: ${accEl}   |   Out-of-range spikes: ${spikeEl}   |   Rows: ${filtRows.length}`;
+//     doc.text(meta2, MARGIN, 20);
+
+//     // 11. Dataset label row
+//     doc.setTextColor(0, 212, 160);        // --teal
+//     doc.text(DS_NOTES[activeDS], MARGIN, 25);
+
+//     // 12. Timestamp (right-aligned in header)
+//     doc.setTextColor(85, 92, 114);        // --text3
+//     const now = new Date().toLocaleString();
+//     doc.text(`Exported: ${now}`, pageW_mm - MARGIN, 9, {align:'right'});
+
+//     // 13. Draw the chart image below the header
+//     const imgY = HEADER_H + 4;
+//     doc.addImage(imgData, 'PNG', MARGIN, imgY, imgW_mm, imgH_mm);
+
+//     // 14. Draw legend strip below chart
+//     const legendY = imgY + imgH_mm + 4;
+//     doc.setFontSize(7);
+//     doc.setTextColor(138, 144, 164);
+//     const legendItems = [
+//       {color:[0,212,160],  label:'Amp'},
+//       {color:[255,92,92],  label:'Upper limit (dashed)'},
+//       {color:[245,158,11], label:'Lower limit (dashed)'},
+//       {color:[245,166,35], label:'Refilled (stable) ◆'},
+//       {color:[255,92,92],  label:'Refilled (unstable) ◆'},
+//     ];
+//     let lx = MARGIN;
+//     legendItems.forEach(item=>{
+//       doc.setFillColor(...item.color);
+//       doc.rect(lx, legendY, 4, 2.5, 'F');
+//       doc.setTextColor(138,144,164);
+//       doc.text(item.label, lx+5.5, legendY+2);
+//       lx += doc.getTextWidth(item.label) + 14;
+//     });
+
+//     // 15. Save the PDF
+//     const filename = `amp_chart_${activeDS}_${new Date().toISOString().slice(0,10)}.pdf`;
+//     doc.save(filename);
+
+//   } catch(e){
+//     alert('PDF export failed: ' + e.message);
+//     console.error(e);
+//   }
+
+//   btn.disabled = false;
+//   btn.textContent = '📄 Export PDF';
+// }
+// ── export amp chart as PNG ────────────────────────────────────────────
+function exportAmpPNG(){
   if(!chAmp){alert('No Amp chart to export.');return;}
-
-  const btn = document.getElementById('ampPdfBtn');
+  const btn = document.getElementById('ampPngBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ Generating…';
-
+  btn.textContent = '⏳ Saving…';
   try{
-    // 1. Get the full canvas (entire width — not just visible scroll area)
     const canvas = document.getElementById('cAmp');
-    const chartW = canvas.width;   // full pixel width of the chart
-    const chartH = canvas.height;  // 400px
-
-    // 2. Capture canvas as PNG image data
     const imgData = canvas.toDataURL('image/png', 1.0);
-
-    // 3. Calculate PDF page dimensions
-    //    We use the chart's natural aspect ratio and fit to a landscape page.
-    //    jsPDF works in mm by default. We'll make the page exactly fit the chart.
-    //    Max page width: 841mm (A1 landscape) — for very wide charts we scale down.
-    const { jsPDF } = window.jspdf;
-
-    // Header area height in mm
-    const HEADER_H   = 28;   // mm reserved for metadata header at top
-    const MARGIN      = 10;   // mm margin on each side
-    const MAX_PAGE_W  = 1200; // mm max page width (handles very wide charts)
-
-    // Scale chart to fit within MAX_PAGE_W minus margins
-    const availW   = MAX_PAGE_W - MARGIN * 2;
-    const scale    = Math.min(1, availW / (chartW * 0.264583)); // px to mm: 1px = 0.264583mm
-    const imgW_mm  = chartW * 0.264583 * scale;
-    const imgH_mm  = chartH * 0.264583 * scale;
-    const pageW_mm = imgW_mm + MARGIN * 2;
-    const pageH_mm = imgH_mm + HEADER_H + MARGIN + 10; // +10 bottom margin
-
-    // 4. Create PDF with custom page size (landscape orientation)
-    const doc = new jsPDF({
-      orientation: pageW_mm > pageH_mm ? 'landscape' : 'portrait',
-      unit: 'mm',
-      format: [pageW_mm, pageH_mm],
-    });
-
-    // 5. Draw dark background to match dashboard theme
-    doc.setFillColor(13, 15, 20);         // --bg: #0d0f14
-    doc.rect(0, 0, pageW_mm, pageH_mm, 'F');
-
-    // 6. Header bar background
-    doc.setFillColor(19, 22, 29);         // --bg2: #13161d
-    doc.rect(0, 0, pageW_mm, HEADER_H, 'F');
-
-    // 7. Teal accent line under header
-    doc.setDrawColor(0, 212, 160);        // --teal
-    doc.setLineWidth(0.5);
-    doc.line(0, HEADER_H, pageW_mm, HEADER_H);
-
-    // 8. Title text
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(232, 234, 240);      // --text
-    doc.text('GlucoAdmin — Amp vs Time', MARGIN, 9);
-
-    // 9. Metadata row 1: Solution / Expected / Tolerance
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(138, 144, 164);      // --text2
-    const meta1 = `Solution: ${limitSolution}   |   Expected: ${limitExpCurrent} nA   |   Tolerance: ${limitTolPct}%`;
-    doc.text(meta1, MARGIN, 15);
-
-    // 10. Metadata row 2: Limits / Accuracy / Rows
-    const accEl = document.getElementById('fAccuracy').textContent;
-    const spikeEl = document.getElementById('fSpikes').textContent;
-    const meta2 = `Lower limit: ${curLo}   |   Upper limit: ${curHi}   |   Accuracy: ${accEl}   |   Out-of-range spikes: ${spikeEl}   |   Rows: ${filtRows.length}`;
-    doc.text(meta2, MARGIN, 20);
-
-    // 11. Dataset label row
-    doc.setTextColor(0, 212, 160);        // --teal
-    doc.text(DS_NOTES[activeDS], MARGIN, 25);
-
-    // 12. Timestamp (right-aligned in header)
-    doc.setTextColor(85, 92, 114);        // --text3
-    const now = new Date().toLocaleString();
-    doc.text(`Exported: ${now}`, pageW_mm - MARGIN, 9, {align:'right'});
-
-    // 13. Draw the chart image below the header
-    const imgY = HEADER_H + 4;
-    doc.addImage(imgData, 'PNG', MARGIN, imgY, imgW_mm, imgH_mm);
-
-    // 14. Draw legend strip below chart
-    const legendY = imgY + imgH_mm + 4;
-    doc.setFontSize(7);
-    doc.setTextColor(138, 144, 164);
-    const legendItems = [
-      {color:[0,212,160],  label:'Amp'},
-      {color:[255,92,92],  label:'Upper limit (dashed)'},
-      {color:[245,158,11], label:'Lower limit (dashed)'},
-      {color:[245,166,35], label:'Refilled (stable) ◆'},
-      {color:[255,92,92],  label:'Refilled (unstable) ◆'},
-    ];
-    let lx = MARGIN;
-    legendItems.forEach(item=>{
-      doc.setFillColor(...item.color);
-      doc.rect(lx, legendY, 4, 2.5, 'F');
-      doc.setTextColor(138,144,164);
-      doc.text(item.label, lx+5.5, legendY+2);
-      lx += doc.getTextWidth(item.label) + 14;
-    });
-
-    // 15. Save the PDF
-    const filename = `amp_chart_${activeDS}_${new Date().toISOString().slice(0,10)}.pdf`;
-    doc.save(filename);
-
+    const a = document.createElement('a');
+    a.href = imgData;
+    a.download = `amp_chart_${activeDS}_${new Date().toISOString().slice(0,10)}.png`;
+    a.click();
   } catch(e){
-    alert('PDF export failed: ' + e.message);
-    console.error(e);
+    alert('PNG export failed: ' + e.message);
   }
-
   btn.disabled = false;
-  btn.textContent = '📄 Export PDF';
+  btn.textContent = '🖼 Download PNG';
 }
-
 // ── export excel ───────────────────────────────────────────────────────
 async function exportExcel(){
   if(!filtRows.length){alert('No data to export.');return;}
